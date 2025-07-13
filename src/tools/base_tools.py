@@ -1,7 +1,7 @@
 import json
 from langchain.tools import BaseTool
 
-from ..models.execution_state import EnhancedExecutionState
+from models.execution_state import EnhancedExecutionState
 
 
 class UpdateGoalStatusTool(BaseTool):

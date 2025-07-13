@@ -1,4 +1,4 @@
-from .textgan_agents import GeneratorAgent, RewarderAgent, ReviewerAgent
 from .deep_research_agent import DeepResearchAgent
+from .textgan_agents import GeneratorAgent, ReviewerAgent, RewarderAgent
 
-__all__ = ["GeneratorAgent", "RewarderAgent", "ReviewerAgent", "DeepResearchAgent"]
+__all__ = ["DeepResearchAgent", "GeneratorAgent", "ReviewerAgent", "RewarderAgent"]

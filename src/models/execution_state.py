@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from dateutil.parser import parse as parse_date
 from dateutil.relativedelta import relativedelta
 
-from .base_models import SearchResultItem, KnowledgeItem
+from models.base_models import SearchResultItem, KnowledgeItem
 
 
 class EnhancedExecutionState(BaseModel):

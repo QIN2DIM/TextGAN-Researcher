@@ -7,8 +7,8 @@ from langchain_core.messages import HumanMessage
 from dateutil.parser import parse as parse_date
 from dateutil.relativedelta import relativedelta
 
-from ..models.base_models import SearchResultItem, KnowledgeItem
-from ..models.execution_state import EnhancedExecutionState
+from models.base_models import SearchResultItem, KnowledgeItem
+from models.execution_state import EnhancedExecutionState
 
 
 class KnowledgeFreshnessAnalysisTool(BaseTool):

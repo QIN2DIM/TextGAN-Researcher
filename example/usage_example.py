@@ -7,7 +7,7 @@ import os
 from langchain_openai import ChatOpenAI
 from langchain_core.callbacks import StdOutCallbackHandler
 
-from src.agents.deep_research_agent import DeepResearchAgent
+from agents.deep_research_agent import DeepResearchAgent
 
 
 def main():

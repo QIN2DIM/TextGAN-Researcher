@@ -1,14 +1,16 @@
 import datetime
 from typing import List, Optional
+
+from langchain import hub
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain.prompts import PromptTemplate
+from langchain_core.callbacks import BaseCallbackHandler, CallbackManager
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import SystemMessage
-from langchain_core.callbacks import BaseCallbackHandler, CallbackManager
-from langchain import hub
 
-from ..models.execution_state import EnhancedExecutionState
-from ..tools import (
+from agents.textgan_agents import GeneratorAgent, ReviewerAgent, RewarderAgent
+from models.execution_state import EnhancedExecutionState
+from tools import (
     EnhancedWebSearchTool,
     GoalDecompositionTool,
     InformationExtractionTool,
@@ -23,7 +25,6 @@ from ..tools import (
     GenerateContentTool,
     ViewCurrentGenerationTool,
 )
-from .textgan_agents import GeneratorAgent, RewarderAgent, ReviewerAgent
 
 
 class DeepResearchAgent:
@@ -186,9 +187,13 @@ class DeepResearchAgent:
         summary.append("\n知识时效性统计:")
         total_knowledge = len(self.state.knowledge_base)
         if total_knowledge > 0:
-            summary.append(f"- 过去3个月内: {recent_3m}条 ({recent_3m/total_knowledge*100:.1f}%)")
-            summary.append(f"- 过去6个月内: {recent_6m}条 ({recent_6m/total_knowledge*100:.1f}%)")
-            summary.append(f"- 过去1年内: {recent_1y}条 ({recent_1y/total_knowledge*100:.1f}%)")
+            summary.append(
+                f"- 过去3个月内: {recent_3m}条 ({recent_3m / total_knowledge * 100:.1f}%)"
+            )
+            summary.append(
+                f"- 过去6个月内: {recent_6m}条 ({recent_6m / total_knowledge * 100:.1f}%)"
+            )
+            summary.append(f"- 过去1年内: {recent_1y}条 ({recent_1y / total_knowledge * 100:.1f}%)")
         else:
             summary.append("- 知识库为空，无时效性数据。")
 

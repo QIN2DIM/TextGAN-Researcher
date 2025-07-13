@@ -5,8 +5,8 @@ from langchain.prompts import PromptTemplate
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 
-from ..models.base_models import KnowledgeItem
-from ..models.execution_state import EnhancedExecutionState
+from models.base_models import KnowledgeItem
+from models.execution_state import EnhancedExecutionState
 
 
 class InformationExtractionTool(BaseTool):
