@@ -15,37 +15,42 @@ from ..models.execution_state import EnhancedExecutionState
 
 class EnhancedWebSearchTool(BaseTool):
     """真实的Web搜索工具，支持Google Custom Search API和DuckDuckGo API"""
+
     name = "web_search"
     description = "Search the web for information on a given query using real search APIs. Returns a JSON list of SearchResultItem, including content, URL, publish_date (ISO format), and confidence score (0.0-1.0). Example input: 'latest AI regulations in EU'"
-    
+
     def __init__(self, search_api_key: Optional[str] = None, search_engine: str = "duckduckgo"):
         super().__init__()
         self.search_api_key = search_api_key or os.getenv("SEARCH_API_KEY")
         self.search_engine = search_engine.lower()
         self.google_cx = os.getenv("GOOGLE_CX")  # Google Custom Search Engine ID
-        
+
         if self.search_engine == "google" and not self.search_api_key:
-            raise ValueError("Google Custom Search API requires SEARCH_API_KEY environment variable")
-    
+            raise ValueError(
+                "Google Custom Search API requires SEARCH_API_KEY environment variable"
+            )
+
     def _search_google(self, query: str) -> List[SearchResultItem]:
         """使用Google Custom Search API进行搜索"""
         if not self.search_api_key or not self.google_cx:
-            raise ValueError("Google Custom Search requires both SEARCH_API_KEY and GOOGLE_CX environment variables")
-        
+            raise ValueError(
+                "Google Custom Search requires both SEARCH_API_KEY and GOOGLE_CX environment variables"
+            )
+
         url = "https://www.googleapis.com/customsearch/v1"
         params = {
             "key": self.search_api_key,
             "cx": self.google_cx,
             "q": query,
-            "num": 5  # 最多返回5个结果
+            "num": 5,  # 最多返回5个结果
         }
-        
+
         try:
             with httpx.Client(timeout=10.0) as client:
                 response = client.get(url, params=params)
                 response.raise_for_status()
                 data = response.json()
-                
+
                 results = []
                 for item in data.get("items", []):
                     # 尝试从snippet中提取发布日期
@@ -55,95 +60,111 @@ class EnhancedWebSearchTool(BaseTool):
                             if "article:published_time" in meta:
                                 publish_date = meta["article:published_time"]
                                 break
-                    
+
                     # 计算可信度分数（基于域名权威性等）
                     confidence = self._calculate_confidence(item.get("displayLink", ""))
-                    
-                    results.append(SearchResultItem(
-                        content=item.get("snippet", ""),
-                        url=item.get("link", ""),
-                        publish_date=publish_date,
-                        confidence=confidence
-                    ))
-                
+
+                    results.append(
+                        SearchResultItem(
+                            content=item.get("snippet", ""),
+                            url=item.get("link", ""),
+                            publish_date=publish_date,
+                            confidence=confidence,
+                        )
+                    )
+
                 return results
         except Exception as e:
             print(f"Google搜索失败: {str(e)}")
             return []
-    
+
     def _search_duckduckgo(self, query: str) -> List[SearchResultItem]:
         """使用DuckDuckGo Instant Answer API进行搜索"""
         url = "https://api.duckduckgo.com/"
-        params = {
-            "q": query,
-            "format": "json",
-            "no_html": "1",
-            "skip_disambig": "1"
-        }
-        
+        params = {"q": query, "format": "json", "no_html": "1", "skip_disambig": "1"}
+
         try:
             with httpx.Client(timeout=10.0) as client:
                 response = client.get(url, params=params)
                 response.raise_for_status()
                 data = response.json()
-                
+
                 results = []
-                
+
                 # 添加Abstract结果
                 if data.get("Abstract"):
-                    results.append(SearchResultItem(
-                        content=data["Abstract"],
-                        url=data.get("AbstractURL", ""),
-                        publish_date=None,
-                        confidence=0.8
-                    ))
-                
+                    results.append(
+                        SearchResultItem(
+                            content=data["Abstract"],
+                            url=data.get("AbstractURL", ""),
+                            publish_date=None,
+                            confidence=0.8,
+                        )
+                    )
+
                 # 添加Related Topics
                 for topic in data.get("RelatedTopics", [])[:3]:
                     if isinstance(topic, dict) and "Text" in topic:
-                        results.append(SearchResultItem(
-                            content=topic["Text"],
-                            url=topic.get("FirstURL", ""),
-                            publish_date=None,
-                            confidence=0.7
-                        ))
-                
+                        results.append(
+                            SearchResultItem(
+                                content=topic["Text"],
+                                url=topic.get("FirstURL", ""),
+                                publish_date=None,
+                                confidence=0.7,
+                            )
+                        )
+
                 return results
         except Exception as e:
             print(f"DuckDuckGo搜索失败: {str(e)}")
             return []
-    
+
     def _calculate_confidence(self, domain: str) -> float:
         """基于域名计算可信度分数"""
         if not domain:
             return 0.5
-        
+
         # 高可信度域名
         high_confidence_domains = [
-            "wikipedia.org", "edu", "gov", "ac.uk", "org",
-            "nature.com", "science.org", "arxiv.org", "ieee.org",
-            "acm.org", "springer.com", "elsevier.com"
+            "wikipedia.org",
+            "edu",
+            "gov",
+            "ac.uk",
+            "org",
+            "nature.com",
+            "science.org",
+            "arxiv.org",
+            "ieee.org",
+            "acm.org",
+            "springer.com",
+            "elsevier.com",
         ]
-        
+
         # 中等可信度域名
         medium_confidence_domains = [
-            "medium.com", "techcrunch.com", "wired.com", "theverge.com",
-            "bbc.com", "reuters.com", "bloomberg.com", "cnn.com"
+            "medium.com",
+            "techcrunch.com",
+            "wired.com",
+            "theverge.com",
+            "bbc.com",
+            "reuters.com",
+            "bloomberg.com",
+            "cnn.com",
         ]
-        
+
         domain_lower = domain.lower()
-        
+
         for high_domain in high_confidence_domains:
             if high_domain in domain_lower:
                 return 0.9
-        
+
         for medium_domain in medium_confidence_domains:
             if medium_domain in domain_lower:
                 return 0.7
-        
+
         # 默认中等可信度
         return 0.6
-    
+
     def _run(self, query: str) -> str:
         try:
             if self.search_engine == "google":
@@ -153,7 +174,7 @@ class EnhancedWebSearchTool(BaseTool):
             else:
                 # 默认使用DuckDuckGo
                 results = self._search_duckduckgo(query)
-            
+
             # 如果没有结果，返回模拟数据
             if not results:
                 results = [
@@ -161,10 +182,10 @@ class EnhancedWebSearchTool(BaseTool):
                         content=f"关于 '{query}' 的搜索结果。这是一个示例结果。",
                         url=f"https://example.com/search/{query.replace(' ', '-')}",
                         publish_date=(datetime.datetime.now() - relativedelta(days=5)).isoformat(),
-                        confidence=0.6
+                        confidence=0.6,
                     )
                 ]
-            
+
             return json.dumps([r.dict() for r in results])
         except Exception as e:
             print(f"搜索失败: {str(e)}")
@@ -174,7 +195,7 @@ class EnhancedWebSearchTool(BaseTool):
                     content=f"搜索 '{query}' 时出现错误，这是模拟结果。",
                     url=f"https://example.com/fallback/{query.replace(' ', '-')}",
                     publish_date=datetime.datetime.now().isoformat(),
-                    confidence=0.5
+                    confidence=0.5,
                 )
             ]
             return json.dumps([r.dict() for r in mock_results])
@@ -182,9 +203,10 @@ class EnhancedWebSearchTool(BaseTool):
 
 class GoalDecompositionTool(BaseTool):
     """目标分解工具"""
+
     name = "decompose_goal"
     description = "Break down a complex research goal into smaller, manageable sub-goals. Input: The main goal string. Output: A JSON array of sub-goal strings. Example input: 'Understand climate change impacts on agriculture'"
-    
+
     def __init__(self, llm: BaseChatModel, state: EnhancedExecutionState):
         super().__init__()
         self.llm = llm
@@ -208,7 +230,7 @@ class GoalDecompositionTool(BaseTool):
             
             仅返回JSON数组，不要有其他说明。"""
         )
-    
+
     def _run(self, goal: str) -> str:
         response = self.llm.invoke([HumanMessage(content=self.prompt.format(main_goal=goal))])
         try:
@@ -219,4 +241,4 @@ class GoalDecompositionTool(BaseTool):
                 result_messages.append(f"- {goal_id}: {sub_goal}")
             return "\n".join(result_messages)
         except Exception as e:
-            return f"目标分解失败: {str(e)}. 原始响应: {response.content}" 
+            return f"目标分解失败: {str(e)}. 原始响应: {response.content}"

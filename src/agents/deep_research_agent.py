@@ -9,29 +9,43 @@ from langchain import hub
 
 from ..models.execution_state import EnhancedExecutionState
 from ..tools import (
-    EnhancedWebSearchTool, GoalDecompositionTool, InformationExtractionTool,
-    KnowledgeFreshnessAnalysisTool, ContradictionDetectionTool, ResolveContradictionTool,
-    HypothesisGenerationTool, VerifyHypothesisTool, SynthesizeKnowledgeTool,
-    UpdateGoalStatusTool, ViewKnowledgeBaseTool, GenerateContentTool, ViewCurrentGenerationTool
+    EnhancedWebSearchTool,
+    GoalDecompositionTool,
+    InformationExtractionTool,
+    KnowledgeFreshnessAnalysisTool,
+    ContradictionDetectionTool,
+    ResolveContradictionTool,
+    HypothesisGenerationTool,
+    VerifyHypothesisTool,
+    SynthesizeKnowledgeTool,
+    UpdateGoalStatusTool,
+    ViewKnowledgeBaseTool,
+    GenerateContentTool,
+    ViewCurrentGenerationTool,
 )
 from .textgan_agents import GeneratorAgent, RewarderAgent, ReviewerAgent
 
 
 class DeepResearchAgent:
     """Deep Research Agent 主类"""
-    def __init__(self, llm: BaseChatModel, verbose: bool = True, 
-                 callbacks: Optional[List[BaseCallbackHandler]] = None):
+
+    def __init__(
+        self,
+        llm: BaseChatModel,
+        verbose: bool = True,
+        callbacks: Optional[List[BaseCallbackHandler]] = None,
+    ):
         self.llm = llm
         self.state: Optional[EnhancedExecutionState] = None
         self.verbose = verbose
-        
+
         self.callback_manager = CallbackManager(callbacks if callbacks else [])
-        
+
         # 初始化TextGAN-D角色
         self.generator = GeneratorAgent(llm)
         self.rewarder = RewarderAgent(llm)
         self.reviewer = ReviewerAgent(llm)
-        
+
         self.tools = []  # 工具将在initialize中动态生成
         self.agent_executor = None
 
@@ -45,7 +59,7 @@ class DeepResearchAgent:
             task_id = f"task_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
         self.state = EnhancedExecutionState(task_id=task_id, task_description=task_description)
         print(f"--- 开始新任务: {self.state.task_description} (ID: {self.state.task_id}) ---")
-        
+
         # 动态创建工具实例，传入state和llm
         # 注意：VerifyHypothesisTool 需要 EnhancedWebSearchTool 实例
         web_search_tool_instance = EnhancedWebSearchTool()
@@ -57,14 +71,16 @@ class DeepResearchAgent:
             ContradictionDetectionTool(self.llm, self.state),
             ResolveContradictionTool(self.llm, self.state),  # 新增工具
             HypothesisGenerationTool(self.llm, self.state),
-            VerifyHypothesisTool(self.llm, self.state, web_search_tool_instance),  # 新增工具，依赖搜索工具
+            VerifyHypothesisTool(
+                self.llm, self.state, web_search_tool_instance
+            ),  # 新增工具，依赖搜索工具
             SynthesizeKnowledgeTool(self.llm, self.state),  # 新增工具
             UpdateGoalStatusTool(self.state),
             ViewKnowledgeBaseTool(self.state),
             GenerateContentTool(self),  # 传入自身实例以便调用GAN角色和更新状态
-            ViewCurrentGenerationTool(self)
+            ViewCurrentGenerationTool(self),
         ]
-        
+
         # --- 从 LangChain Hub 拉取 ReAct 提示模板 ---
         # 使用 react-json 模板，它支持工具的JSON输入/输出
         # 注意: hub.pull 可能会进行网络请求，确保网络连接
@@ -113,44 +129,45 @@ class DeepResearchAgent:
         self.agent = create_react_agent(
             self.llm,
             self.tools,
-            PromptTemplate.from_messages(messages)  # 使用 PromptTemplate.from_messages
+            PromptTemplate.from_messages(messages),  # 使用 PromptTemplate.from_messages
         )
-        
+
         self.agent_executor = AgentExecutor(
             agent=self.agent,
             tools=self.tools,
             verbose=self.verbose,
             handle_parsing_errors=True,
-            callback_manager=self.callback_manager  # 将回调管理器传递给执行器
+            callback_manager=self.callback_manager,  # 将回调管理器传递给执行器
         )
-    
+
     def run(self, task_description: str, task_id: Optional[str] = None) -> str:
         """
         运行Deep Research Agent完成研究任务。
         task_id 可选，用于为当前任务提供一个标识符，每次运行都会从新状态开始。
         """
         self.initialize(task_description, task_id)
-        
-        self.callback_manager.on_chain_start({"name": "DeepResearchAgent", "input": {"task": task_description}})
-        
+
+        self.callback_manager.on_chain_start(
+            {"name": "DeepResearchAgent", "input": {"task": task_description}}
+        )
+
         # 初始调用，将用户任务传递给Agent
         # 注意: ReAct 模板通常期望 'input' 和 'agent_scratchpad'
-        result = self.agent_executor.invoke({
-            "input": task_description,
-            "agent_scratchpad": ""  # 初始为空
-        })
-        
+        result = self.agent_executor.invoke(
+            {"input": task_description, "agent_scratchpad": ""}  # 初始为空
+        )
+
         self.callback_manager.on_chain_end({"output": result["output"]})
-        
+
         return result["output"]
-    
+
     def get_research_process_summary(self) -> str:
         """获取研究过程的摘要统计"""
         if not self.state:
             return "尚未开始任何研究任务"
-        
+
         goal_stats = self.state.get_goal_progress()
-        
+
         summary = [
             "=== 研究过程摘要 ===",
             f"- 任务: {self.state.task_description}",
@@ -159,13 +176,13 @@ class DeepResearchAgent:
             f"- 搜索迭代: {len(self.state.search_iterations)}次",
             f"- 收集知识条目: {len(self.state.knowledge_base)}条",
             f"- 已生成假设: {len(self.state.hypotheses)}个",
-            f"- 检测到矛盾: {len(self.state.contradictions)}个"
+            f"- 检测到矛盾: {len(self.state.contradictions)}个",
         ]
-        
+
         recent_1y = len(self.state.get_knowledge_by_recency(365))
         recent_6m = len(self.state.get_knowledge_by_recency(180))
         recent_3m = len(self.state.get_knowledge_by_recency(90))
-        
+
         summary.append("\n知识时效性统计:")
         total_knowledge = len(self.state.knowledge_base)
         if total_knowledge > 0:
@@ -174,10 +191,10 @@ class DeepResearchAgent:
             summary.append(f"- 过去1年内: {recent_1y}条 ({recent_1y/total_knowledge*100:.1f}%)")
         else:
             summary.append("- 知识库为空，无时效性数据。")
-        
+
         if self.state.current_generation:
             summary.append(f"\n最终生成内容评分: {self.state.current_score}/10")
             if self.state.current_criticism:
                 summary.append(f"最终批评: {self.state.current_criticism[:200]}...")
 
-        return "\n".join(summary) 
+        return "\n".join(summary)

@@ -34,25 +34,14 @@ setup(
     python_requires=">=3.8",
     install_requires=requirements,
     extras_require={
-        "dev": [
-            "pytest>=6.0",
-            "pytest-cov>=2.0",
-            "black>=21.0",
-            "flake8>=3.8",
-            "mypy>=0.800",
-        ],
-        "api": [
-            "fastapi>=0.104.0",
-            "uvicorn>=0.24.0",
-            "httpx>=0.25.0",
-            "python-multipart>=0.0.6",
-        ],
+        "dev": ["pytest>=6.0", "pytest-cov>=2.0", "black>=21.0", "flake8>=3.8", "mypy>=0.800"],
+        "api": ["fastapi>=0.104.0", "uvicorn>=0.24.0", "httpx>=0.25.0", "python-multipart>=0.0.6"],
     },
     entry_points={
         "console_scripts": [
             "deep-research=examples.usage_example:main",
             "deep-research-api=api.run_api:main",
-        ],
+        ]
     },
     include_package_data=True,
     zip_safe=False,
@@ -62,4 +51,4 @@ setup(
         "Source": "https://github.com/yourusername/deep-research-agent",
         "Documentation": "https://github.com/yourusername/deep-research-agent#readme",
     },
-) 
+)

@@ -5,9 +5,7 @@ Deep Research Agent API 测试脚本
 
 import requests
 import json
-import time
 import os
-from typing import Dict, Any
 
 
 def test_api_health(base_url: str = "http://localhost:8000") -> bool:
@@ -51,12 +49,12 @@ def test_search_tools() -> bool:
     """测试搜索工具"""
     try:
         from src.tools.search_tools import EnhancedWebSearchTool
-        
+
         # 测试DuckDuckGo搜索
         print("测试DuckDuckGo搜索...")
         search_tool = EnhancedWebSearchTool(search_engine="duckduckgo")
         result = search_tool._run("AI technology")
-        
+
         # 解析结果
         results = json.loads(result)
         if isinstance(results, list) and len(results) > 0:
@@ -66,7 +64,7 @@ def test_search_tools() -> bool:
         else:
             print("❌ DuckDuckGo搜索测试失败")
             return False
-            
+
     except Exception as e:
         print(f"❌ 搜索工具测试异常: {str(e)}")
         return False
@@ -77,19 +75,19 @@ def test_agent_creation() -> bool:
     try:
         from langchain_openai import ChatOpenAI
         from src.agents.deep_research_agent import DeepResearchAgent
-        
+
         # 检查OpenAI API密钥
         if not os.getenv("OPENAI_API_KEY"):
             print("⚠️  未设置OPENAI_API_KEY，跳过代理创建测试")
             return True
-        
+
         print("测试代理创建...")
         llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0.5)
         agent = DeepResearchAgent(llm, verbose=False)
-        
+
         print("✅ 代理创建测试通过")
         return True
-        
+
     except Exception as e:
         print(f"❌ 代理创建测试异常: {str(e)}")
         return False
@@ -98,31 +96,31 @@ def test_agent_creation() -> bool:
 def main():
     """主测试函数"""
     print("=== Deep Research Agent API 测试 ===")
-    
+
     # 测试搜索工具
     print("\n1. 测试搜索工具...")
     search_test = test_search_tools()
-    
+
     # 测试代理创建
     print("\n2. 测试代理创建...")
     agent_test = test_agent_creation()
-    
+
     # 测试API（如果服务器运行）
     print("\n3. 测试API端点...")
     api_health = test_api_health()
-    
+
     if api_health:
         api_config = test_api_config()
     else:
         api_config = False
-    
+
     # 总结
     print("\n=== 测试总结 ===")
     print(f"搜索工具: {'✅ 通过' if search_test else '❌ 失败'}")
     print(f"代理创建: {'✅ 通过' if agent_test else '❌ 失败'}")
     print(f"API健康: {'✅ 通过' if api_health else '❌ 失败'}")
     print(f"API配置: {'✅ 通过' if api_config else '❌ 失败'}")
-    
+
     if all([search_test, agent_test]):
         print("\n🎉 核心功能测试通过！")
         if api_health and api_config:
@@ -134,4 +132,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()
