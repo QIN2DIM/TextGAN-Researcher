@@ -1,3 +1,4 @@
+# uv pip compile pyproject.toml -o requirements.txt
 [project]
 name = "textgan-researcher"
 version = "0.1.0"
